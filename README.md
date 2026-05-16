@@ -1,9 +1,5 @@
 #  Virtual Campus: Serverless Event-Driven Workflow
 
-[![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazonaws)](https://aws.amazon.com/)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](https://www.python.org/)
-[![DevOps](https://img.shields.io/badge/Course-DevOps_Master-004D99)](#)
-
 > **Project P12:** Build a serverless event-driven workflow. 
 > **Author:** Adrian-Vlad Betea
 
@@ -14,7 +10,7 @@ Students can use the HTML frontend to log in, view their assigned courses, and e
 
 ## System Architecture
 
-![System Architecture](`./System Architecture.png`) 
+![System Architecture](./System%20Architecture.png)
 
 ### Technology Stack & Components
 The architecture relies entirely on AWS managed services, requiring zero server provisioning:
