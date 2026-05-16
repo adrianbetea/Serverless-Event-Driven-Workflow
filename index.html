@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Campus Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; color: #333; }
+        .navbar { background-color: #004d99; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .navbar h2 { margin: 0; font-size: 22px; }
+        .user-profile { font-weight: bold; background: #003366; padding: 5px 15px; border-radius: 20px;}
+        
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        .grid-layout { display: none; grid-template-columns: 1fr 2fr; gap: 30px; } 
+        
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; }
+        h3 { margin-top: 0; color: #004d99; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; background-color: #ff9900; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.2s; }
+        button:hover { background-color: #e68a00; }
+        .btn-secondary { background-color: #004d99; margin-top: 10px; }
+        .btn-secondary:hover { background-color: #003366; }
+        .btn-logout { background-color: #cc0000; padding: 5px 15px; font-size: 14px; width: auto; margin-left: 10px;}
+
+        .course-list { list-style: none; padding: 0; margin: 0; }
+        .course-item { background: #e6f2ff; margin-bottom: 10px; padding: 15px; border-radius: 8px; border-left: 5px solid #004d99; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
+        
+        #statusConsole { margin-top: 15px; padding: 10px; border-radius: 5px; font-size: 14px; display: none; background: #1e1e1e; color: #0f0; font-family: 'Courier New', Courier, monospace; line-height: 1.5; }
+        .badge { background: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+        .time-badge { background: #444; color: #ff9900; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: monospace; position: absolute; top: 20px; right: 25px; }
+        .empty-state { color: #888; font-style: italic; text-align: center; padding: 20px; }
+
+        #loginScreen { max-width: 400px; margin: 100px auto; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>🎓 University Virtual Campus</h2>
+        <div class="user-profile" id="userProfile" style="display: none;">
+            Student: <span id="displayStudentID"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <!-- LOGIN SECTION -->
+        <div class="card" id="loginScreen">
+            <h3>Student Login</h3>
+            <p style="font-size: 14px; color: #666;">Enter your Student ID (e.g. JohnDoe-12)</p>
+            <input type="text" id="loginInput" placeholder="Enter Student ID...">
+            <button onclick="login()">Access Campus</button>
+        </div>
+
+        <!-- MAIN DASHBOARD -->
+        <div class="grid-layout" id="dashboardScreen">
+            <!-- ENROLLMENT SECTION -->
+            <div class="card">
+                <h3>Enroll in a Course</h3>
+                <p style="font-size: 14px; color: #666;">Select a course. Processed via AWS SQS.</p>
+                
+                <select id="courseSelect">
+                    <option value="DevOps">DevOps</option>
+                    <option value="Introduction to Research">Introduction to Research</option>
+                    <option value="Cloud Foundations">Cloud Foundations</option>
+                    <option value="Software Engineering Fundamentals">Software Engineering Fundamentals</option>
+                    <option value="Object Oriented Programming">Object Oriented Programming</option>
+                    <option value="Communication Technologies in IoT">Communication Technologies in IoT</option>
+                    <option value="Web Programming">Web Programming</option>
+                    <option value="Graphic Design">Graphic Design</option>
+                    <option value="Emerging Technologies In Digital Media">Emerging Technologies In Digital Media</option>
+                    <option value="Introduction to Machine Learning">Introduction to Machine Learning</option>
+                </select>
+                
+                <button onclick="enrollCourse()">Enroll Now</button>
+                <div id="statusConsole"></div>
+            </div>
+
+            <!-- COURSES SECTION -->
+            <div class="card">
+                <h3>My Assigned Courses</h3>
+                <div id="readTime" class="time-badge">Fetch Time: 0 ms</div>
+                <button class="btn-secondary" onclick="loadCourses()" style="width: auto; padding: 8px 15px; font-size: 14px; margin-bottom: 15px;">🔄 Refresh</button>
+                
+                <ul class="course-list" id="coursesList">
+                    <div class="empty-state">Loading courses...</div>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // PUT YOUR AWS API GATEWAY LINK HERE:
+        const API_URL = "https://0dwmg2asge.execute-api.eu-north-1.amazonaws.com/default/DevopsServerlessProject"; 
+        let currentStudentId = "";
+
+        function login() {
+            const input = document.getElementById('loginInput').value.trim();
+            if(input === "") { alert("Please enter a Student ID!"); return; }
+            
+            currentStudentId = input;
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'grid';
+            document.getElementById('userProfile').style.display = 'block';
+            document.getElementById('displayStudentID').innerText = currentStudentId;
+            
+            loadCourses();
+        }
+
+        function logout() {
+            currentStudentId = "";
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('dashboardScreen').style.display = 'none';
+            document.getElementById('userProfile').style.display = 'none';
+            document.getElementById('loginInput').value = "";
+            document.getElementById('statusConsole').style.display = 'none';
+        }
+
+        async function loadCourses() {
+            const list = document.getElementById('coursesList');
+            const readTimeDiv = document.getElementById('readTime');
+            list.innerHTML = "<div class='empty-state'>Fetching data from DynamoDB...</div>";
+            readTimeDiv.innerText = "Fetching...";
+
+            const startTime = performance.now(); // Start timer for GET request
+
+            try {
+                const response = await fetch(`${API_URL}?student_id=${currentStudentId}`);
+                const data = await response.json();
+                
+                const duration = (performance.now() - startTime).toFixed(0);
+                readTimeDiv.innerText = `Fetch Time: ${duration} ms`; // Show time
+
+                list.innerHTML = "";
+                if (data.courses && data.courses.length > 0) {
+                    data.courses.forEach(course => {
+                        list.innerHTML += `<li class="course-item">${course} <span class="badge">Enrolled</span></li>`;
+                    });
+                } else {
+                    list.innerHTML = "<div class='empty-state'>You are not enrolled in any courses yet.</div>";
+                }
+            } catch (error) {
+                list.innerHTML = "<div class='empty-state' style='color: red;'>Error connecting to database.</div>";
+            }
+        }
+
+        async function enrollCourse() {
+            const course = document.getElementById('courseSelect').value;
+            const consoleDiv = document.getElementById('statusConsole');
+            const enrollBtn = document.querySelector('button[onclick="enrollCourse()"]');
+            
+            // --- NOU: VALIDARE FRONTEND (CLIENT-SIDE) ---
+            // Verificăm dacă materia este deja în lista afișată pe ecran
+            const currentCoursesText = document.getElementById('coursesList').innerText;
+            if (currentCoursesText.includes(course)) {
+                alert(`Oops! You are already enrolled in "${course}".`);
+                return; // Oprim execuția aici. Nu mai consumăm resurse AWS!
+            }
+            // --------------------------------------------
+
+            enrollBtn.disabled = true;
+            enrollBtn.style.backgroundColor = "#888";
+            enrollBtn.innerText = "Processing...";
+            
+            consoleDiv.style.display = "block";
+            consoleDiv.style.color = "#888";
+            consoleDiv.innerHTML = "Validating and sending to SQS queue... ⏳";
+
+            const startTime = performance.now(); 
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ student_id: currentStudentId, course: course })
+                });
+                
+                const duration = (performance.now() - startTime).toFixed(0); 
+                const result = await response.json();
+                
+                if (response.status === 400) {
+                    consoleDiv.style.color = "#ff3333";
+                    consoleDiv.innerHTML = `> 400 Error: ${result.message}<br>> Execution Time: <span style="color:#ff9900">${duration} ms</span>`;
+                    
+                    // --- NOU: POPUP PENTRU EROARE DIN BACKEND ---
+                    alert(`Server says: You are already enrolled in "${course}".`);
+                    
+                } else {
+                    consoleDiv.style.color = "#0f0";
+                    consoleDiv.innerHTML = `> 200 OK: ${result.message}<br>> Event triggered Worker Lambda.<br>> Execution Time: <span style="color:#ff9900">${duration} ms</span>`;
+                    
+                    setTimeout(() => {
+                        loadCourses(); 
+                    }, 1500);
+                }
+            } catch (error) {
+                consoleDiv.style.color = "#ff3333";
+                consoleDiv.innerHTML = "> 500 Error: Failed to queue request.";
+            } finally {
+                enrollBtn.disabled = false;
+                enrollBtn.style.backgroundColor = "#ff9900";
+                enrollBtn.innerText = "Enroll Now";
+            }
+        }
+    </script>
+
+</body>
+</html>
